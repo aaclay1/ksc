@@ -162,6 +162,47 @@ jQuery(document).ready(function($) {
         document.body.removeChild(link);
     });
 
+    $('#vhrUniqueButton').on('click', function() {
+        const unique = getUniqueVolunteers();
+        const tbody = $('#vhrUniqueTable tbody');
+        tbody.empty();
+        unique.forEach(v => tbody.append(`<tr><td>${v.last_name}, ${v.first_name}</td></tr>`));
+        $('#vhrUniqueCount').text(`Unique volunteers: ${unique.length}`);
+        $('#vhrUniqueSection').show();
+    });
+
+    $('#vhrUniquePrintButton').on('click', function() {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`<html><head><title>Unique Volunteers</title><style>
+            body{font-family:Arial,sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;}
+            th,td{border:1px solid #000;padding:8px;text-align:left;} th{background:#f0f0f0;}
+        </style></head><body><h2>Unique Volunteers</h2><div>${$('#vhrUniqueCount').text()}</div>${$('#vhrUniqueTable')[0].outerHTML}</body></html>`);
+        printWindow.document.close();
+        printWindow.onload = function() { printWindow.print(); printWindow.onafterprint = function() { printWindow.close(); }; };
+    });
+
+    $('#vhrUniqueExportButton').on('click', function() {
+        const table = document.getElementById('vhrUniqueTable');
+        let csv = [];
+        const headers = [];
+        table.querySelectorAll('thead th').forEach(c => headers.push('"' + c.textContent.trim() + '"'));
+        csv.push(headers.join(','));
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const rowData = [];
+            row.querySelectorAll('td').forEach(c => rowData.push('"' + c.textContent.trim() + '"'));
+            csv.push(rowData.join(','));
+        });
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const now = new Date();
+        link.download = `unique_volunteers_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.csv`;
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
     performSearch();
 });
 </script>
