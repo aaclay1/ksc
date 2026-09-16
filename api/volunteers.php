@@ -33,7 +33,18 @@ switch ($action) {
 
         if (!empty($_GET['member_id'])) { $where[] = 's.member_id = ?'; $params[] = intval($_GET['member_id']); }
         if (!empty($_GET['activity_id'])) { $where[] = 's.activity_id = ?'; $params[] = intval($_GET['activity_id']); }
-        if (!empty($_GET['signin_date'])) { $where[] = 'DATE(s.signin_date) = ?'; $params[] = trim($_GET['signin_date']); }
+
+        if (!empty($_GET['start_date']) && !empty($_GET['end_date'])) {
+            $where[] = 'DATE(s.signin_date) BETWEEN ? AND ?';
+            $params[] = trim($_GET['start_date']);
+            $params[] = trim($_GET['end_date']);
+        } elseif (!empty($_GET['start_date'])) {
+            $where[] = 'DATE(s.signin_date) >= ?';
+            $params[] = trim($_GET['start_date']);
+        } elseif (!empty($_GET['end_date'])) {
+            $where[] = 'DATE(s.signin_date) <= ?';
+            $params[] = trim($_GET['end_date']);
+        }
 
         $sql = "SELECT m.id AS member_id, m.last_name, m.first_name, a.activity_name,
                        DATE(s.signin_date) AS log_date, SUM(s.volunteer_hours) AS total_hours

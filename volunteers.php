@@ -15,8 +15,12 @@ require_once __DIR__ . '/includes/header.php';
             <select name="activity_id" id="vhr_activity_id"><option value="">All Activities</option></select>
         </div>
         <div class="form-group">
-            <label for="vhr_signin_date">Date:</label>
-            <input type="date" name="signin_date" id="vhr_signin_date">
+            <label for="vhr_start_date">From:</label>
+            <input type="date" name="start_date" id="vhr_start_date">
+        </div>
+        <div class="form-group">
+            <label for="vhr_end_date">To:</label>
+            <input type="date" name="end_date" id="vhr_end_date">
         </div>
         <div class="button-group">
             <button type="submit" id="vhrSearchButton">Search</button>
