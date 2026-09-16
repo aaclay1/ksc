@@ -27,6 +27,7 @@ require_once __DIR__ . '/includes/header.php';
             <button type="button" id="vhrResetButton" class="reset-button">Reset</button>
             <button type="button" id="vhrPrintButton" style="display:none;">Print Results</button>
             <button type="button" id="vhrExportButton" style="display:none;">Export to CSV</button>
+            <button type="button" id="vhrUniqueButton" style="display:none;">Show Unique Volunteers</button>
         </div>
     </form>
 
@@ -37,10 +38,25 @@ require_once __DIR__ . '/includes/header.php';
     </table>
     <div id="vhrGrandTotal" class="grand-total" style="display:none;"></div>
     <div id="vhrNoResults" style="display:none;">No volunteer hours found.</div>
+
+    <div id="vhrUniqueSection" style="display:none;">
+        <h2>Unique Volunteers</h2>
+        <div id="vhrUniqueCount"></div>
+        <table id="vhrUniqueTable">
+            <thead><tr><th>Member Name</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <div class="button-group">
+            <button type="button" id="vhrUniquePrintButton">Print Unique List</button>
+            <button type="button" id="vhrUniqueExportButton">Export Unique List to CSV</button>
+        </div>
+    </div>
 </div>
 
 <script>
 jQuery(document).ready(function($) {
+    let lastResults = [];
+
     function loadOptions(url, params, selectEl, valueKey, labelFn) {
         $.getJSON(url, params, function(response) {
             if (response.success) {
@@ -59,19 +75,22 @@ jQuery(document).ready(function($) {
             if (response.success && response.data.length > 0) {
                 displayResults(response.data);
             } else {
+                lastResults = [];
                 $('#vhrResultsTable, #vhrGrandTotal').hide();
                 $('#vhrNoResults').show();
                 $('#vhrRecordCount').text('Records found: 0');
-                $('#vhrPrintButton, #vhrExportButton').hide();
+                $('#vhrPrintButton, #vhrExportButton, #vhrUniqueButton').hide();
+                $('#vhrUniqueSection').hide();
             }
         }, 'json');
     }
 
     function displayResults(results) {
+        lastResults = results;
         const tbody = $('#vhrResultsTable tbody');
         tbody.empty();
         $('#vhrRecordCount').text(`Records found: ${results.length}`);
-        $('#vhrPrintButton, #vhrExportButton').show();
+        $('#vhrPrintButton, #vhrExportButton, #vhrUniqueButton').show();
 
         let grandTotal = 0;
         results.forEach(row => {
@@ -83,13 +102,30 @@ jQuery(document).ready(function($) {
         $('#vhrResultsTable').show();
         $('#vhrGrandTotal').text(`Total Volunteer Hours: ${grandTotal}`).show();
         $('#vhrNoResults').hide();
+        $('#vhrUniqueSection').hide();
+    }
+
+    function getUniqueVolunteers() {
+        const seen = new Map();
+        lastResults.forEach(row => {
+            if (!seen.has(row.member_id)) {
+                seen.set(row.member_id, { last_name: row.last_name, first_name: row.first_name });
+            }
+        });
+        return Array.from(seen.values()).sort((a, b) => {
+            const an = `${a.last_name}, ${a.first_name}`.toLowerCase();
+            const bn = `${b.last_name}, ${b.first_name}`.toLowerCase();
+            return an < bn ? -1 : (an > bn ? 1 : 0);
+        });
     }
 
     $('#volunteerReportForm').on('submit', function(e) { e.preventDefault(); performSearch(); });
 
     $('#vhrResetButton').on('click', function() {
         $('#volunteerReportForm')[0].reset();
-        $('#vhrResultsTable, #vhrGrandTotal, #vhrPrintButton, #vhrExportButton').hide();
+        lastResults = [];
+        $('#vhrResultsTable, #vhrGrandTotal, #vhrPrintButton, #vhrExportButton, #vhrUniqueButton').hide();
+        $('#vhrUniqueSection').hide();
         $('#vhrNoResults').hide();
         $('#vhrRecordCount').text('');
     });
