@@ -169,6 +169,7 @@ jQuery(document).ready(function($) {
         unique.forEach(v => tbody.append(`<tr><td>${v.last_name}, ${v.first_name}</td></tr>`));
         $('#vhrUniqueCount').text(`Unique volunteers: ${unique.length}`);
         $('#vhrUniqueSection').show();
+        document.getElementById('vhrUniqueSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     $('#vhrUniquePrintButton').on('click', function() {
