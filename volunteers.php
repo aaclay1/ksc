@@ -31,14 +31,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </form>
 
-    <div id="vhrRecordCount"></div>
-    <table id="vhrResultsTable" style="display:none;">
-        <thead><tr><th>Member Name</th><th>Activity</th><th>Date</th><th>Total Hours</th></tr></thead>
-        <tbody></tbody>
-    </table>
-    <div id="vhrGrandTotal" class="grand-total" style="display:none;"></div>
-    <div id="vhrNoResults" style="display:none;">No volunteer hours found.</div>
-
     <div id="vhrUniqueSection" style="display:none;">
         <h2>Unique Volunteers</h2>
         <div id="vhrUniqueCount"></div>
@@ -51,11 +43,33 @@ require_once __DIR__ . '/includes/header.php';
             <button type="button" id="vhrUniqueExportButton">Export Unique List to CSV</button>
         </div>
     </div>
+
+    <div id="vhrRecordCount"></div>
+    <table id="vhrResultsTable" style="display:none;">
+        <thead><tr><th>Member Name</th><th>Activity</th><th>Date</th><th>Total Hours</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <div id="vhrGrandTotal" class="grand-total" style="display:none;"></div>
+    <div id="vhrNoResults" style="display:none;">No volunteer hours found.</div>
 </div>
 
 <script>
 jQuery(document).ready(function($) {
     let lastResults = [];
+
+    // Format a plain "YYYY-MM-DD" (or "YYYY-MM-DD HH:MM:SS") date string for
+    // display WITHOUT going through the JS Date/timezone machinery. Using
+    // `new Date(dateString)` on a date-only string parses it as UTC midnight,
+    // then `.toLocaleDateString()` renders it in the browser's local timezone
+    // — which rolls it back a day for any US timezone. This avoids that.
+    function formatDateStr(dateStr) {
+        if (!dateStr) return '';
+        const datePart = String(dateStr).split(' ')[0].split('T')[0];
+        const parts = datePart.split('-');
+        if (parts.length !== 3) return datePart;
+        const [y, m, d] = parts;
+        return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`;
+    }
 
     function loadOptions(url, params, selectEl, valueKey, labelFn) {
         $.getJSON(url, params, function(response) {
@@ -96,7 +110,7 @@ jQuery(document).ready(function($) {
         results.forEach(row => {
             const hours = parseFloat(row.total_hours);
             grandTotal += hours;
-            tbody.append(`<tr><td>${row.last_name}, ${row.first_name}</td><td>${row.activity_name}</td><td>${new Date(row.log_date).toLocaleDateString()}</td><td>${hours}</td></tr>`);
+            tbody.append(`<tr><td>${row.last_name}, ${row.first_name}</td><td>${row.activity_name}</td><td>${formatDateStr(row.log_date)}</td><td>${hours}</td></tr>`);
         });
 
         $('#vhrResultsTable').show();

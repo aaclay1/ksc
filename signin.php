@@ -114,8 +114,27 @@ require_once __DIR__ . '/includes/header.php';
 
 <script>
 jQuery(document).ready(function($) {
-    const today = new Date().toISOString().split('T')[0];
+    // Use the browser's LOCAL date components, not toISOString() (which is
+    // UTC-based). toISOString() rolls over to the next calendar day starting
+    // in the early evening Central time, which would default these fields to
+    // tomorrow's date. This always matches whatever day it actually is here.
+    const now = new Date();
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     $('#m_signin_date, #g_signin_date').val(today);
+
+    // Format a plain "YYYY-MM-DD" (or "YYYY-MM-DD HH:MM:SS") date string for
+    // display WITHOUT going through the JS Date/timezone machinery. Using
+    // `new Date(dateString)` on a date-only string parses it as UTC midnight,
+    // then `.toLocaleDateString()` renders it in the browser's local timezone
+    // — which rolls it back a day for any US timezone. This avoids that.
+    function formatDateStr(dateStr) {
+        if (!dateStr) return '';
+        const datePart = String(dateStr).split(' ')[0].split('T')[0];
+        const parts = datePart.split('-');
+        if (parts.length !== 3) return datePart;
+        const [y, m, d] = parts;
+        return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`;
+    }
 
     function populateSelect(url, params, selectEl, valueKey, labelFn) {
         $.getJSON(url, params, function(response) {
@@ -230,7 +249,7 @@ jQuery(document).ready(function($) {
         $('#recordCount').text(`Records found: ${results.length}`);
         $('#printButton, #exportButton').show();
         results.forEach(row => {
-            tbody.append(`<tr><td>${row.last_name}, ${row.first_name}</td><td>${row.activity_name}</td><td>${new Date(row.signin_date).toLocaleDateString()}</td></tr>`);
+            tbody.append(`<tr><td>${row.last_name}, ${row.first_name}</td><td>${row.activity_name}</td><td>${formatDateStr(row.signin_date)}</td></tr>`);
         });
         $('#resultsTable').show();
         $('#noResults').hide();

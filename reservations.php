@@ -75,6 +75,20 @@ require_once __DIR__ . '/includes/header.php';
 
 <script>
 jQuery(document).ready(function($) {
+    // Format a plain "YYYY-MM-DD" (or "YYYY-MM-DD HH:MM:SS") date string for
+    // display WITHOUT going through the JS Date/timezone machinery. Using
+    // `new Date(dateString)` on a date-only string parses it as UTC midnight,
+    // then `.toLocaleDateString()` renders it in the browser's local timezone
+    // — which rolls it back a day for any US timezone. This avoids that.
+    function formatDateStr(dateStr) {
+        if (!dateStr) return '';
+        const datePart = String(dateStr).split(' ')[0].split('T')[0];
+        const parts = datePart.split('-');
+        if (parts.length !== 3) return datePart;
+        const [y, m, d] = parts;
+        return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`;
+    }
+
     function loadMembers(selectEl) {
         $.getJSON('api/reservations.php', { action: 'members' }, function(response) {
             if (response.success) {
@@ -170,7 +184,7 @@ jQuery(document).ready(function($) {
         results.forEach(row => {
             tbody.append(`<tr>
                 <td>${row.last_name}, ${row.first_name}</td>
-                <td>${new Date(row.res_date).toLocaleDateString()}</td>
+                <td>${formatDateStr(row.res_date)}</td>
                 <td style="text-align:center">${row.bus_rider == 1 ? 'Yes' : 'No'}</td>
                 <td style="text-align:center">${row.eat_lunch == 1 ? 'Yes' : 'No'}</td>
                 <td style="text-align:center">${row.showed == 1 ? 'Yes' : 'No'}</td>
