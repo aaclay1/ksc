@@ -91,6 +91,9 @@ switch ($action) {
     // in advance (CX/NCNS, walk-ins, bus trip breakdown, money) are left for
     // staff to fill in by hand on the printed sheet -- only what's knowable
     // ahead of time (reservation/member/guest/volunteer counts) is filled in.
+    // Reservations that were already cancelled ahead of time still print
+    // (with "CX" bolded in their CX/NCNS cell) rather than disappearing, so
+    // the sheet still shows the full picture of who was expected.
     case 'day_sheet':
         $res_date = trim($_GET['res_date']);
         if (!$res_date) {
@@ -100,10 +103,10 @@ switch ($action) {
         $date_label = central_time($res_date, false)->format('l, F jS');
 
         $rows = db_get_results(
-            "SELECT m.first_name, m.last_name, m.renewal_date, m.is_volunteer, m.is_guest, r.bus_rider
+            "SELECT m.first_name, m.last_name, m.renewal_date, m.is_volunteer, m.is_guest, r.bus_rider, r.cancelled
              FROM lunch_reservations r
              JOIN members m ON r.member_id = m.id
-             WHERE DATE(r.res_date) = ? AND r.cancelled = 0
+             WHERE DATE(r.res_date) = ?
              ORDER BY m.last_name, m.first_name",
             array($res_date)
         );

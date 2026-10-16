@@ -94,6 +94,15 @@ function output_day_sheet_xlsx($date_label, $counts, $rows, $today = null) {
         if ($colIndex[$col] > $maxCol) { $maxCol = $colIndex[$col]; }
     };
 
+    // Same as $setCell, but $runs is an array of array('text'=>.., 'bold'=>bool)
+    // rendered as separate runs in the same cell -- e.g. a bold "CX" followed
+    // by a plain "/NCNS" -- rather than one uniformly-styled string.
+    $setCellRich = function ($row, $col, $runs, $style) use (&$grid, &$maxRow, &$maxCol, $colIndex) {
+        $grid[$row][$col] = array('v' => $runs, 's' => $style, 't' => 'rich');
+        if ($row > $maxRow) { $maxRow = $row; }
+        if ($colIndex[$col] > $maxCol) { $maxCol = $colIndex[$col]; }
+    };
+
     // --- title (boxed, merged across the full width) ---
     $titleRow = 1;
     $setCell($titleRow, 'A', $date_label, 1);
@@ -172,6 +181,7 @@ function output_day_sheet_xlsx($date_label, $counts, $rows, $today = null) {
         $last_name = is_array($r) ? $r['last_name'] : $r->last_name;
         $first_name = is_array($r) ? $r['first_name'] : $r->first_name;
         $bus_rider = (is_array($r) ? $r['bus_rider'] : $r->bus_rider) == 1;
+        $cancelled = (is_array($r) ? (isset($r['cancelled']) ? $r['cancelled'] : 0) : (isset($r->cancelled) ? $r->cancelled : 0)) == 1;
 
         // Renew cell.
         if ($is_guest) {
@@ -211,7 +221,18 @@ function output_day_sheet_xlsx($date_label, $counts, $rows, $today = null) {
         $setCell($dataRow, 'A', $renew, $renewStyle);
         $setCell($dataRow, 'B', $name, $nameStyle);
         $setCell($dataRow, 'C', '', 5);
-        $setCell($dataRow, 'D', 'CX/NCNS', 5);
+        // The day sheet prints "CX/NCNS" down the whole column for staff to
+        // circle by hand. When this reservation was already cancelled ahead
+        // of time (the "cancelled" flag), bold just the "CX" half so it's
+        // obvious at a glance which ones are already known cancellations.
+        if ($cancelled) {
+            $setCellRich($dataRow, 'D', array(
+                array('text' => 'CX', 'bold' => true),
+                array('text' => '/NCNS', 'bold' => false),
+            ), 5);
+        } else {
+            $setCell($dataRow, 'D', 'CX/NCNS', 5);
+        }
         $setCell($dataRow, 'E', $bus_rider ? 'Yes' : '', 5);
         $setCell($dataRow, 'F', '', 5);
         $dataRow++;
@@ -230,7 +251,16 @@ function output_day_sheet_xlsx($date_label, $counts, $rows, $today = null) {
             if (!isset($cells[$col])) { continue; }
             $cell = $cells[$col];
             $ref = $col . $rowNum;
-            $sheetDataXml .= '<c r="' . $ref . '" s="' . $cell['s'] . '" t="inlineStr"><is><t xml:space="preserve">' . $xml($cell['v']) . '</t></is></c>';
+            if ($cell['t'] === 'rich') {
+                $runsXml = '';
+                foreach ($cell['v'] as $run) {
+                    $rPr = $run['bold'] ? '<rPr><b/><sz val="11"/><rFont val="Calibri"/></rPr>' : '<rPr><sz val="11"/><rFont val="Calibri"/></rPr>';
+                    $runsXml .= '<r>' . $rPr . '<t xml:space="preserve">' . $xml($run['text']) . '</t></r>';
+                }
+                $sheetDataXml .= '<c r="' . $ref . '" s="' . $cell['s'] . '" t="inlineStr"><is>' . $runsXml . '</is></c>';
+            } else {
+                $sheetDataXml .= '<c r="' . $ref . '" s="' . $cell['s'] . '" t="inlineStr"><is><t xml:space="preserve">' . $xml($cell['v']) . '</t></is></c>';
+            }
         }
         $sheetDataXml .= '</row>';
     }
