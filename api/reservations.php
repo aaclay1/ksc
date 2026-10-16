@@ -104,7 +104,7 @@ switch ($action) {
         // the browser as a file download; otherwise fall back to the plain
         // JSON shape (kept in case anything else ever needs the raw data).
         if (isset($_GET['format']) && $_GET['format'] === 'xlsx') {
-            $tmpFile = output_day_sheet_xlsx($date_label, $counts, $rows);
+            $tmpFile = output_day_sheet_xlsx($date_label, $counts, $rows, central_time()->format('Y-m-d'));
             $filename = 'day_sheet_' . $res_date . '.xlsx';
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             header('Content-Disposition: attachment; filename="' . $filename . '"');
