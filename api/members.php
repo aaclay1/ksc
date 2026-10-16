@@ -17,7 +17,7 @@ switch ($action) {
     case 'get':
         $id = intval($_GET['id']);
         $row = db_get_row(
-            "SELECT first_name, last_name, phone_number, email, is_60_plus, is_clay_resident, is_volunteer, is_guest, barcode FROM members WHERE id = ?",
+            "SELECT first_name, last_name, phone_number, email, is_60_plus, is_clay_resident, is_volunteer, is_guest, renewal_date, barcode FROM members WHERE id = ?",
             array($id)
         );
         if ($row) {
@@ -45,6 +45,8 @@ switch ($action) {
         $is_clay_resident = !empty($_POST['is_clay_resident']) ? 1 : 0;
         $is_volunteer = !empty($_POST['is_volunteer']) ? 1 : 0;
         $is_guest = !empty($_POST['is_guest']) ? 1 : 0;
+        $renewalDate = trim($_POST['renewalDate']);
+        $renewalDate = $renewalDate !== '' ? $renewalDate : null;
         $barcode = generate_unique_barcode('members');
 
         $new_id = db_insert('members', array(
@@ -56,6 +58,7 @@ switch ($action) {
             'is_clay_resident' => $is_clay_resident,
             'is_volunteer' => $is_volunteer,
             'is_guest' => $is_guest,
+            'renewal_date' => $renewalDate,
             'barcode' => $barcode,
             'date_added' => central_time()->format('Y-m-d H:i:s'),
         ));
@@ -91,6 +94,8 @@ switch ($action) {
         $is_clay_resident = !empty($_POST['is_clay_resident']) ? 1 : 0;
         $is_volunteer = !empty($_POST['is_volunteer']) ? 1 : 0;
         $is_guest = !empty($_POST['is_guest']) ? 1 : 0;
+        $renewalDate = trim($_POST['renewalDate']);
+        $renewalDate = $renewalDate !== '' ? $renewalDate : null;
 
         $result = db_update('members', array(
             'first_name' => $firstName,
@@ -101,6 +106,7 @@ switch ($action) {
             'is_clay_resident' => $is_clay_resident,
             'is_volunteer' => $is_volunteer,
             'is_guest' => $is_guest,
+            'renewal_date' => $renewalDate,
         ), array('id' => $id));
 
         if ($result !== false) {

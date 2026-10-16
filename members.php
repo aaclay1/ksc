@@ -36,6 +36,11 @@ require_once __DIR__ . '/includes/header.php';
         </div>
 
         <div class="form-group">
+            <label for="renewalDate">Renewal Date:</label>
+            <input type="date" name="renewalDate" id="renewalDate">
+        </div>
+
+        <div class="form-group">
             <div class="checkbox-wrapper">
                 <label for="is_60_plus">Age 60+</label>
                 <input type="checkbox" name="is_60_plus" id="is_60_plus">
@@ -114,7 +119,7 @@ jQuery(document).ready(function($) {
     }
 
     function clearForm() {
-        $('#firstName, #lastName, #phoneNumber, #email, #record_id').val('');
+        $('#firstName, #lastName, #phoneNumber, #email, #renewalDate, #record_id').val('');
         $('#is_60_plus, #is_clay_resident, #is_volunteer, #is_guest').prop('checked', false);
         $('#barcodeDisplay').empty();
         $('#barcodeNumber').text('');
@@ -143,6 +148,7 @@ jQuery(document).ready(function($) {
                 $('#lastName').val(response.data.last_name);
                 $('#phoneNumber').val(response.data.phone_number);
                 $('#email').val(response.data.email);
+                $('#renewalDate').val(response.data.renewal_date || '');
                 $('#is_60_plus').prop('checked', response.data.is_60_plus == 1);
                 $('#is_clay_resident').prop('checked', response.data.is_clay_resident == 1);
                 $('#is_volunteer').prop('checked', response.data.is_volunteer == 1);
@@ -162,6 +168,7 @@ jQuery(document).ready(function($) {
             lastName: $('#lastName').val(),
             phoneNumber: $('#phoneNumber').val(),
             email: $('#email').val(),
+            renewalDate: $('#renewalDate').val(),
             is_60_plus: $('#is_60_plus').prop('checked') ? 1 : 0,
             is_clay_resident: $('#is_clay_resident').prop('checked') ? 1 : 0,
             is_volunteer: $('#is_volunteer').prop('checked') ? 1 : 0,
@@ -199,6 +206,7 @@ jQuery(document).ready(function($) {
             lastName: $('#lastName').val(),
             phoneNumber: $('#phoneNumber').val(),
             email: $('#email').val(),
+            renewalDate: $('#renewalDate').val(),
             is_60_plus: $('#is_60_plus').prop('checked') ? 1 : 0,
             is_clay_resident: $('#is_clay_resident').prop('checked') ? 1 : 0,
             is_volunteer: $('#is_volunteer').prop('checked') ? 1 : 0,

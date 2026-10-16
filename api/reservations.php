@@ -60,6 +60,48 @@ switch ($action) {
         $results ? json_success($results) : json_fail('No reservations found');
         break;
 
+    // Printable "day sheet" roster for a single date: everyone with a lunch
+    // reservation that day, plus the counts needed to fill in the admin box
+    // at the top of the printed sheet. Fields the system has no way to know
+    // in advance (CX/NCNS, walk-ins, bus trip breakdown, money) are left for
+    // staff to fill in by hand on the printed sheet -- only what's knowable
+    // ahead of time (reservation/member/guest/volunteer counts) is filled in.
+    case 'day_sheet':
+        $res_date = trim($_GET['res_date']);
+        if (!$res_date) {
+            json_fail('A date is required');
+        }
+
+        $date_label = central_time($res_date, false)->format('l, F jS');
+
+        $rows = db_get_results(
+            "SELECT m.first_name, m.last_name, m.renewal_date, m.is_volunteer, m.is_guest, r.bus_rider
+             FROM lunch_reservations r
+             JOIN members m ON r.member_id = m.id
+             WHERE DATE(r.res_date) = ?
+             ORDER BY m.last_name, m.first_name",
+            array($res_date)
+        );
+        $rows = $rows ?: array();
+
+        $member_count = 0;
+        $guest_count = 0;
+        $volunteer_count = 0;
+        foreach ($rows as $row) {
+            if ($row->is_guest == 1) { $guest_count++; } else { $member_count++; }
+            if ($row->is_volunteer == 1) { $volunteer_count++; }
+        }
+
+        json_success(array(
+            'date_label' => $date_label,
+            'reservation_count' => count($rows),
+            'member_count' => $member_count,
+            'guest_count' => $guest_count,
+            'volunteer_count' => $volunteer_count,
+            'rows' => $rows,
+        ));
+        break;
+
     default:
         json_fail('Unknown action');
 }

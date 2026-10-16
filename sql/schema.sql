@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS `members` (
     `is_clay_resident` TINYINT(1) NOT NULL DEFAULT 0,
     `is_volunteer` TINYINT(1) NOT NULL DEFAULT 0,
     `is_guest` TINYINT(1) NOT NULL DEFAULT 0,
+    `renewal_date` DATE NULL DEFAULT NULL,
     `barcode` VARCHAR(20) NOT NULL DEFAULT '',
     `date_added` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
