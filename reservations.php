@@ -43,7 +43,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="form-group" id="daySheetFieldWrap" style="display:none;">
         <label for="daySheetDate">Date:</label>
         <input type="date" id="daySheetDate">
-        <button type="button" id="daySheetGenerate">Generate CSV</button>
+        <button type="button" id="daySheetGenerate">Generate Excel File</button>
     </div>
 
     <form id="searchForm">
@@ -121,63 +121,14 @@ jQuery(document).ready(function($) {
         }
     });
 
-    function csvCell(value) {
-        return '"' + String(value === undefined || value === null ? '' : value).replace(/"/g, '""') + '"';
-    }
-
     $('#daySheetGenerate').on('click', function() {
         const date = $('#daySheetDate').val();
         if (!date) { alert('Please select a date'); return; }
 
-        $.getJSON('api/reservations.php', { action: 'day_sheet', res_date: date }, function(response) {
-            if (!response.success) { alert('Error: ' + response.data.message); return; }
-            const d = response.data;
-
-            // Mirrors the paper day-sheet: counts the system can know ahead of
-            // time (reservations/member/guest/volunteer) are filled in; counts
-            // that depend on how the day actually goes (CX/NCNS, walk-ins,
-            // final total, bus trip breakdown, money) are left blank for staff
-            // to fill in by hand after printing.
-            const csvRows = [
-                [d.date_label],
-                [],
-                ['Reservations:', d.reservation_count],
-                ['Member:', d.member_count],
-                ['Guest:', d.guest_count],
-                ['CX/NCNS:', ''],
-                ['Walk Ins:', ''],
-                ['Total:', ''],
-                [],
-                ['Bus:', '', 'x2=', '', '=', ''],
-                ['', '', 'x1=', ''],
-                [],
-                ['AIS:', ''],
-                [],
-                ['Volunteers:', d.volunteer_count],
-                ['Member Money:', '$'],
-                ['Guest Money:', '$'],
-                ['Total Money:', '$'],
-                [],
-                ['Renew', 'Member Name', 'Sign', 'CX/NCNS', 'Bus', 'Notes'],
-            ];
-
-            d.rows.forEach(r => {
-                const renew = r.is_guest == 1 ? 'GUEST' : (r.renewal_date ? formatDateStr(r.renewal_date) : '');
-                const name = `${r.last_name}, ${r.first_name}` + (r.is_volunteer == 1 ? ' (VOL)' : '');
-                const bus = r.bus_rider == 1 ? 'Yes' : '';
-                csvRows.push([renew, name, '', 'CX/NCNS', bus, '']);
-            });
-
-            const csv = csvRows.map(row => row.map(csvCell).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `day_sheet_${date}.csv`;
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }, 'json');
+        // The server builds a styled, print-ready .xlsx directly (bordered
+        // boxes, bold header row, shaded volunteer/guest rows) and sends it
+        // as a file download -- no need to fetch JSON and build it client-side.
+        window.location = 'api/reservations.php?action=day_sheet&format=xlsx&res_date=' + encodeURIComponent(date);
     });
 
     $('#addDateRow').on('click', function() {

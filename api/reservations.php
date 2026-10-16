@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../includes/day_sheet_xlsx.php';
 
 $action = isset($_REQUEST['action']) ? $_REQUEST['action'] : '';
 
@@ -92,14 +93,31 @@ switch ($action) {
             if ($row->is_volunteer == 1) { $volunteer_count++; }
         }
 
-        json_success(array(
-            'date_label' => $date_label,
+        $counts = array(
             'reservation_count' => count($rows),
             'member_count' => $member_count,
             'guest_count' => $guest_count,
             'volunteer_count' => $volunteer_count,
+        );
+
+        // format=xlsx streams a styled, print-ready spreadsheet straight to
+        // the browser as a file download; otherwise fall back to the plain
+        // JSON shape (kept in case anything else ever needs the raw data).
+        if (isset($_GET['format']) && $_GET['format'] === 'xlsx') {
+            $tmpFile = output_day_sheet_xlsx($date_label, $counts, $rows);
+            $filename = 'day_sheet_' . $res_date . '.xlsx';
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . filesize($tmpFile));
+            readfile($tmpFile);
+            unlink($tmpFile);
+            exit;
+        }
+
+        json_success(array_merge($counts, array(
+            'date_label' => $date_label,
             'rows' => $rows,
-        ));
+        )));
         break;
 
     default:
