@@ -48,6 +48,10 @@ require_once __DIR__ . '/includes/header.php';
                 <label for="is_volunteer">Volunteer</label>
                 <input type="checkbox" name="is_volunteer" id="is_volunteer">
             </div>
+            <div class="checkbox-wrapper">
+                <label for="is_guest">Guest</label>
+                <input type="checkbox" name="is_guest" id="is_guest">
+            </div>
         </div>
 
         <div class="button-group">
@@ -111,7 +115,7 @@ jQuery(document).ready(function($) {
 
     function clearForm() {
         $('#firstName, #lastName, #phoneNumber, #email, #record_id').val('');
-        $('#is_60_plus, #is_clay_resident, #is_volunteer').prop('checked', false);
+        $('#is_60_plus, #is_clay_resident, #is_volunteer, #is_guest').prop('checked', false);
         $('#barcodeDisplay').empty();
         $('#barcodeNumber').text('');
         $('#printCard').hide();
@@ -142,6 +146,7 @@ jQuery(document).ready(function($) {
                 $('#is_60_plus').prop('checked', response.data.is_60_plus == 1);
                 $('#is_clay_resident').prop('checked', response.data.is_clay_resident == 1);
                 $('#is_volunteer').prop('checked', response.data.is_volunteer == 1);
+                $('#is_guest').prop('checked', response.data.is_guest == 1);
                 displayBarcode(response.data.barcode);
             }
         }).always(function() { $('#loadingIndicator').hide(); });
@@ -160,6 +165,7 @@ jQuery(document).ready(function($) {
             is_60_plus: $('#is_60_plus').prop('checked') ? 1 : 0,
             is_clay_resident: $('#is_clay_resident').prop('checked') ? 1 : 0,
             is_volunteer: $('#is_volunteer').prop('checked') ? 1 : 0,
+            is_guest: $('#is_guest').prop('checked') ? 1 : 0,
         }, function(response) {
             if (response.success) {
                 alert('Record updated successfully');
@@ -196,6 +202,7 @@ jQuery(document).ready(function($) {
             is_60_plus: $('#is_60_plus').prop('checked') ? 1 : 0,
             is_clay_resident: $('#is_clay_resident').prop('checked') ? 1 : 0,
             is_volunteer: $('#is_volunteer').prop('checked') ? 1 : 0,
+            is_guest: $('#is_guest').prop('checked') ? 1 : 0,
         }, function(response) {
             if (response.success) {
                 alert('Record added successfully');

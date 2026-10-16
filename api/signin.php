@@ -42,6 +42,33 @@ function mark_lunch_reservation_showed($member_id, $signin_date) {
     }
 }
 
+// Find an existing member by name (reused if a guest signs in again later, or
+// if the typed name matches a real member), or create a new one flagged as a
+// guest. This keeps guest sign-ins compatible with every report/query that
+// joins through the members table, without requiring the person to already
+// be in the system.
+function get_or_create_guest_member($first_name, $last_name) {
+    $first_name = strtoupper(trim($first_name));
+    $last_name = strtoupper(trim($last_name));
+
+    $member_id = db_get_var(
+        "SELECT id FROM members WHERE UPPER(first_name) = ? AND UPPER(last_name) = ?",
+        array($first_name, $last_name)
+    );
+
+    if ($member_id) {
+        return $member_id;
+    }
+
+    return db_insert('members', array(
+        'first_name' => $first_name,
+        'last_name' => $last_name,
+        'is_guest' => 1,
+        'date_added' => central_time()->format('Y-m-d H:i:s'),
+        'barcode' => 'GUEST' . mt_rand(10000, 99999),
+    ));
+}
+
 function get_or_create_senior_citizen_member() {
     $member_id = db_get_var(
         "SELECT id FROM members WHERE first_name = ? AND last_name = ?",
@@ -92,11 +119,30 @@ switch ($action) {
         break;
 
     // Manual sign-in: member + activity dropdowns, a date, and hours.
+    // A "Guest" sign-in supplies a typed first/last name instead of picking
+    // an existing member; get_or_create_guest_member() reuses a matching
+    // member if one already exists (by name) or creates one flagged as a
+    // guest, so the rest of the sign-in logic doesn't need to know the
+    // difference.
     case 'manual':
-        $member_id = intval($_POST['member_id']);
+        $is_guest = !empty($_POST['is_guest']);
         $activity_id = intval($_POST['activity_id']);
         $volunteer_hours = floatval($_POST['volunteer_hours']);
         $signin_date = trim($_POST['signin_date']);
+
+        if ($is_guest) {
+            $guest_first_name = trim($_POST['guest_first_name']);
+            $guest_last_name = trim($_POST['guest_last_name']);
+            if (!$guest_first_name || !$guest_last_name || !$activity_id || !$signin_date) {
+                json_fail('Invalid input data provided');
+            }
+            $member_id = get_or_create_guest_member($guest_first_name, $guest_last_name);
+            if (!$member_id) {
+                json_fail('Error creating guest record');
+            }
+        } else {
+            $member_id = intval($_POST['member_id']);
+        }
 
         if (!$member_id || !$activity_id || !$signin_date) {
             json_fail('Invalid input data provided');

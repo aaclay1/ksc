@@ -9,8 +9,17 @@ require_once __DIR__ . '/includes/header.php';
     <h2>Manual Sign-In</h2>
     <form id="manualForm">
         <div class="form-group">
+            <label for="m_guest"><input type="checkbox" name="is_guest" id="m_guest" style="width:auto;display:inline-block;vertical-align:middle;"> Guest (not a member)</label>
+        </div>
+        <div class="form-group" id="m_memberFieldWrap">
             <label for="m_member_id">Member:</label>
             <select name="member_id" id="m_member_id" required><option value="">Select a member</option></select>
+        </div>
+        <div class="form-group" id="m_guestFieldWrap" style="display:none;">
+            <label for="m_guest_first_name">First Name:</label>
+            <input type="text" name="guest_first_name" id="m_guest_first_name">
+            <label for="m_guest_last_name">Last Name:</label>
+            <input type="text" name="guest_last_name" id="m_guest_last_name">
         </div>
         <div class="form-group">
             <label for="m_activity_id">Activity:</label>
@@ -161,11 +170,28 @@ jQuery(document).ready(function($) {
     loadActivities('#s_activity_id');
 
     // --- Manual sign-in ---
+    $('#m_guest').on('change', function() {
+        const isGuest = $(this).prop('checked');
+        $('#m_memberFieldWrap').toggle(!isGuest);
+        $('#m_guestFieldWrap').toggle(isGuest);
+        $('#m_member_id').prop('required', !isGuest);
+        $('#m_guest_first_name, #m_guest_last_name').prop('required', isGuest);
+        if (isGuest) { $('#m_member_id').val(''); } else { $('#m_guest_first_name, #m_guest_last_name').val(''); }
+    });
+
     $('#manualForm').on('submit', function(e) {
         e.preventDefault();
+        const isGuest = $('#m_guest').prop('checked');
+        if (isGuest && (!$('#m_guest_first_name').val().trim() || !$('#m_guest_last_name').val().trim())) {
+            alert('Please enter the guest\'s first and last name');
+            return;
+        }
         $.post('api/signin.php', {
             action: 'manual',
+            is_guest: isGuest ? 1 : 0,
             member_id: $('#m_member_id').val(),
+            guest_first_name: $('#m_guest_first_name').val(),
+            guest_last_name: $('#m_guest_last_name').val(),
             activity_id: $('#m_activity_id').val(),
             volunteer_hours: $('#m_volunteer_hours').val(),
             signin_date: $('#m_signin_date').val(),
@@ -173,6 +199,8 @@ jQuery(document).ready(function($) {
             if (response.success) {
                 alert(response.data.message);
                 $('#m_member_id').val('');
+                $('#m_guest_first_name, #m_guest_last_name').val('');
+                $('#m_guest').prop('checked', false).trigger('change');
                 $('#m_volunteer_hours').val(0);
             } else {
                 alert('Error: ' + response.data.message);
