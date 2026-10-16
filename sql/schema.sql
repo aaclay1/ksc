@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS `lunch_reservations` (
     `eat_lunch` TINYINT(1) NOT NULL DEFAULT 0,
     `showed` TINYINT(1) NOT NULL DEFAULT 0,
     `walkin` TINYINT(1) NOT NULL DEFAULT 0,
+    `cancelled` TINYINT(1) NOT NULL DEFAULT 0,
     `notes` TEXT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),

@@ -11,29 +11,53 @@ switch ($action) {
         $rows ? json_success($rows) : json_fail('No members found');
         break;
 
+    // Upserts: if this member already has a reservation on this date (the
+    // table has a UNIQUE KEY on member_id+res_date), this edits it in place
+    // -- updating Bus Rider / Eat Lunch and clearing any prior cancellation,
+    // since actively setting it again means it's back on. Otherwise it
+    // inserts a new reservation as before.
     case 'add':
         $member_id = intval($_POST['member_id']);
         $bus_rider = !empty($_POST['bus_rider']) ? 1 : 0;
         $eat_lunch = !empty($_POST['eat_lunch']) ? 1 : 0;
         $res_date = trim($_POST['res_date']);
 
-        $existing = db_get_var(
-            "SELECT COUNT(*) FROM lunch_reservations WHERE member_id = ? AND res_date = ?",
-            array($member_id, $res_date)
+        db_query(
+            "INSERT INTO lunch_reservations (member_id, res_date, bus_rider, eat_lunch, cancelled, created_at)
+             VALUES (?, ?, ?, ?, 0, ?)
+             ON DUPLICATE KEY UPDATE bus_rider = VALUES(bus_rider), eat_lunch = VALUES(eat_lunch), cancelled = 0",
+            array($member_id, $res_date, $bus_rider, $eat_lunch, central_time()->format('Y-m-d H:i:s'))
         );
-        if ($existing > 0) {
-            json_fail('A reservation already exists for this member on this date');
+
+        json_success(array('message' => 'Reservation saved successfully'));
+        break;
+
+    // Looks up an existing reservation for a member + date so the "Add a
+    // Reservation" form can pre-fill Bus Rider / Eat Lunch when staff are
+    // actually editing one that's already on file.
+    case 'get':
+        $member_id = intval($_GET['member_id']);
+        $res_date = trim($_GET['res_date']);
+        if (!$member_id || !$res_date) {
+            json_fail('Member and date are required');
         }
 
-        $id = db_insert('lunch_reservations', array(
-            'member_id' => $member_id,
-            'bus_rider' => $bus_rider,
-            'eat_lunch' => $eat_lunch,
-            'res_date' => $res_date,
-            'created_at' => central_time()->format('Y-m-d H:i:s'),
-        ));
+        $row = db_get_row(
+            "SELECT bus_rider, eat_lunch, cancelled FROM lunch_reservations WHERE member_id = ? AND res_date = ?",
+            array($member_id, $res_date)
+        );
+        $row ? json_success($row) : json_fail('No existing reservation');
+        break;
 
-        $id !== false ? json_success(array('message' => 'Reservation added successfully')) : json_fail('Error adding reservation');
+    // Marks a reservation cancelled instead of deleting it, so it stays on
+    // record for cancellation tracking. Cancelled reservations are excluded
+    // from the printable Day Sheet. This is distinct from Delete, which
+    // removes the row outright and is never counted as a cancellation.
+    case 'cancel':
+        $member_id = intval($_POST['member_id']);
+        $res_date = trim($_POST['res_date']);
+        $result = db_update('lunch_reservations', array('cancelled' => 1), array('member_id' => $member_id, 'res_date' => $res_date));
+        $result !== false ? json_success(array('message' => 'Reservation cancelled successfully')) : json_fail('Error cancelling reservation');
         break;
 
     case 'delete':
@@ -79,7 +103,7 @@ switch ($action) {
             "SELECT m.first_name, m.last_name, m.renewal_date, m.is_volunteer, m.is_guest, r.bus_rider
              FROM lunch_reservations r
              JOIN members m ON r.member_id = m.id
-             WHERE DATE(r.res_date) = ?
+             WHERE DATE(r.res_date) = ? AND r.cancelled = 0
              ORDER BY m.last_name, m.first_name",
             array($res_date)
         );

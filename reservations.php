@@ -27,6 +27,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="button-group">
             <button type="button" id="addDateRow" class="secondary">+ Add Another Date</button>
             <button type="submit" class="set-button">Set Reservation(s)</button>
+            <button type="button" id="cancelReservations" class="delete-button">Cancel Reservation(s)</button>
             <button type="button" id="deleteReservations" class="delete-button">Delete Reservation(s)</button>
         </div>
     </form>
@@ -77,7 +78,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <div id="recordCount"></div>
     <table id="resultsTable" style="display:none;">
-        <thead><tr><th>Member Name</th><th>Date</th><th>Bus Rider</th><th>Eat Lunch</th><th>Showed</th><th>Walk-in</th></tr></thead>
+        <thead><tr><th>Member Name</th><th>Date</th><th>Bus Rider</th><th>Eat Lunch</th><th>Showed</th><th>Walk-in</th><th>Cancelled</th></tr></thead>
         <tbody></tbody>
     </table>
     <div id="noResults" style="display:none;">No reservations found.</div>
@@ -139,6 +140,37 @@ jQuery(document).ready(function($) {
         $('#dateContainer').append(row);
     });
 
+    // --- Edit-in-place: when a member + date already has a reservation on
+    // file, pull its Bus Rider / Eat Lunch values in so staff are editing
+    // the existing record instead of unknowingly starting from blank
+    // checkboxes. Re-submitting via "Set Reservation(s)" then updates that
+    // record (see the 'add' action on the server, which upserts).
+    function checkExistingReservation(dateEntry) {
+        const member_id = $('#r_member_id').val();
+        const date = dateEntry.find('.res-date').val();
+        const busCheckbox = dateEntry.find('.bus-rider');
+        const lunchCheckbox = dateEntry.find('.eat-lunch');
+        if (!member_id || !date) return;
+
+        $.getJSON('api/reservations.php', { action: 'get', member_id: member_id, res_date: date }, function(response) {
+            if (response.success) {
+                busCheckbox.prop('checked', response.data.bus_rider == 1);
+                lunchCheckbox.prop('checked', response.data.eat_lunch == 1);
+            } else {
+                busCheckbox.prop('checked', false);
+                lunchCheckbox.prop('checked', false);
+            }
+        });
+    }
+
+    $('#r_member_id').on('change', function() {
+        $('.date-entry').each(function() { checkExistingReservation($(this)); });
+    });
+
+    $(document).on('change', '.res-date', function() {
+        checkExistingReservation($(this).closest('.date-entry'));
+    });
+
     $('#reservationForm').on('submit', function(e) {
         e.preventDefault();
         const member_id = $('#r_member_id').val();
@@ -165,7 +197,39 @@ jQuery(document).ready(function($) {
         function finish() {
             if (completed !== dates.length) return;
             let msg = '';
-            if (success > 0) msg += success + ' reservation(s) added successfully';
+            if (success > 0) msg += success + ' reservation(s) saved successfully';
+            if (errors.length > 0) msg += (msg ? '\n\n' : '') + 'Issues:\n' + errors.join('\n');
+            if (msg) {
+                alert(msg);
+                $('#reservationForm')[0].reset();
+                $('#dateContainer').html($('#dateContainer .date-entry').first().clone());
+            }
+        }
+    });
+
+    // Cancel marks the reservation(s) cancelled (kept on record for
+    // cancellation tracking, and left off the printable Day Sheet) rather
+    // than removing them. This is different from Delete, which removes the
+    // record outright and is not counted as a cancellation.
+    $('#cancelReservations').on('click', function() {
+        const member_id = $('#r_member_id').val();
+        const dates = $('.res-date').map(function() { return $(this).val(); }).get().filter(d => d);
+        if (!member_id || dates.length === 0) { alert('Please select a member and at least one date'); return; }
+        if (!confirm('Mark these reservation(s) as cancelled? They will stay on record for tracking but will no longer appear on the printable Day Sheet.')) return;
+
+        let completed = 0, success = 0, errors = [];
+        dates.forEach(date => {
+            $.post('api/reservations.php', { action: 'cancel', member_id: member_id, res_date: date }, function(response) {
+                completed++;
+                if (response.success) success++; else errors.push(response.data.message + ' (' + date + ')');
+                finish();
+            }, 'json').fail(function() { completed++; errors.push('Server error for date ' + date); finish(); });
+        });
+
+        function finish() {
+            if (completed !== dates.length) return;
+            let msg = '';
+            if (success > 0) msg += success + ' reservation(s) marked cancelled';
             if (errors.length > 0) msg += (msg ? '\n\n' : '') + 'Issues:\n' + errors.join('\n');
             if (msg) {
                 alert(msg);
@@ -179,7 +243,7 @@ jQuery(document).ready(function($) {
         const member_id = $('#r_member_id').val();
         const dates = $('.res-date').map(function() { return $(this).val(); }).get().filter(d => d);
         if (!member_id || dates.length === 0) { alert('Please select a member and at least one date'); return; }
-        if (!confirm('Are you sure you want to delete these reservations?')) return;
+        if (!confirm('Are you sure you want to delete these reservations? This permanently removes them and does not count as a cancellation.')) return;
 
         let completed = 0;
         dates.forEach(date => {
@@ -218,6 +282,7 @@ jQuery(document).ready(function($) {
                 <td style="text-align:center">${row.eat_lunch == 1 ? 'Yes' : 'No'}</td>
                 <td style="text-align:center">${row.showed == 1 ? 'Yes' : 'No'}</td>
                 <td style="text-align:center">${row.walkin == 1 ? 'Yes' : 'No'}</td>
+                <td style="text-align:center">${row.cancelled == 1 ? 'Yes' : 'No'}</td>
             </tr>`);
         });
         $('#resultsTable').show();
