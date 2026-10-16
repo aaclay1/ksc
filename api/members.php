@@ -17,7 +17,7 @@ switch ($action) {
     case 'get':
         $id = intval($_GET['id']);
         $row = db_get_row(
-            "SELECT first_name, last_name, phone_number, email, is_60_plus, is_clay_resident, barcode FROM members WHERE id = ?",
+            "SELECT first_name, last_name, phone_number, email, is_60_plus, is_clay_resident, is_volunteer, barcode FROM members WHERE id = ?",
             array($id)
         );
         if ($row) {
@@ -43,6 +43,7 @@ switch ($action) {
         $email = strtoupper(trim($_POST['email']));
         $is_60_plus = !empty($_POST['is_60_plus']) ? 1 : 0;
         $is_clay_resident = !empty($_POST['is_clay_resident']) ? 1 : 0;
+        $is_volunteer = !empty($_POST['is_volunteer']) ? 1 : 0;
         $barcode = generate_unique_barcode('members');
 
         $new_id = db_insert('members', array(
@@ -52,6 +53,7 @@ switch ($action) {
             'email' => $email,
             'is_60_plus' => $is_60_plus,
             'is_clay_resident' => $is_clay_resident,
+            'is_volunteer' => $is_volunteer,
             'barcode' => $barcode,
             'date_added' => central_time()->format('Y-m-d H:i:s'),
         ));
@@ -85,6 +87,7 @@ switch ($action) {
         $email = strtoupper(trim($_POST['email']));
         $is_60_plus = !empty($_POST['is_60_plus']) ? 1 : 0;
         $is_clay_resident = !empty($_POST['is_clay_resident']) ? 1 : 0;
+        $is_volunteer = !empty($_POST['is_volunteer']) ? 1 : 0;
 
         $result = db_update('members', array(
             'first_name' => $firstName,
@@ -93,6 +96,7 @@ switch ($action) {
             'email' => $email,
             'is_60_plus' => $is_60_plus,
             'is_clay_resident' => $is_clay_resident,
+            'is_volunteer' => $is_volunteer,
         ), array('id' => $id));
 
         if ($result !== false) {
