@@ -44,7 +44,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="form-group" id="daySheetFieldWrap" style="display:none;">
         <label for="daySheetDate">Date:</label>
         <input type="date" id="daySheetDate">
-        <button type="button" id="daySheetGenerate">Generate Excel File</button>
+        <button type="button" id="daySheetGenerate">Print</button>
     </div>
 
     <form id="searchForm">
@@ -122,14 +122,120 @@ jQuery(document).ready(function($) {
         }
     });
 
+    // Converts a plain "YYYY-MM-DD" renewal date to "M/D" without going
+    // through the Date/timezone machinery (same reasoning as formatDateStr).
+    function renewMonthDay(dateStr) {
+        const parts = String(dateStr).split('-');
+        if (parts.length !== 3) return dateStr;
+        return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+    }
+
     $('#daySheetGenerate').on('click', function() {
         const date = $('#daySheetDate').val();
         if (!date) { alert('Please select a date'); return; }
 
-        // The server builds a styled, print-ready .xlsx directly (bordered
-        // boxes, bold header row, shaded volunteer/guest rows) and sends it
-        // as a file download -- no need to fetch JSON and build it client-side.
-        window.location = 'api/reservations.php?action=day_sheet&format=xlsx&res_date=' + encodeURIComponent(date);
+        $.getJSON('api/reservations.php', { action: 'day_sheet', res_date: date }, function(response) {
+            if (!response.success) { alert('Error: ' + response.data.message); return; }
+            const d = response.data;
+
+            const now = new Date();
+            const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            const todayTs = new Date(today + 'T00:00:00').getTime();
+            const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+            // Mirrors the paper form: Renew is orange+"GUEST" for a guest,
+            // red+blank for a member with no renewal date on file (needs
+            // paperwork), red with the date if it's expired, yellow if it
+            // expires within 30 days, plain otherwise. Member Name is green
+            // for a bus rider, else orange for a guest, else light blue for
+            // a volunteer. Only the Reservations count up top is filled in
+            // -- everything else is left blank for staff to fill by hand.
+            let rowsHtml = '';
+            d.rows.forEach(r => {
+                let renew, renewClass;
+                if (r.is_guest == 1) {
+                    renew = 'GUEST'; renewClass = 'bg-orange';
+                } else if (!r.renewal_date) {
+                    renew = ''; renewClass = 'bg-red';
+                } else {
+                    renew = renewMonthDay(r.renewal_date);
+                    const renewTs = new Date(r.renewal_date + 'T00:00:00').getTime();
+                    if (renewTs < todayTs) { renewClass = 'bg-red'; }
+                    else if ((renewTs - todayTs) <= THIRTY_DAYS_MS) { renewClass = 'bg-yellow'; }
+                    else { renewClass = ''; }
+                }
+
+                let nameClass;
+                if (r.bus_rider == 1) { nameClass = 'bg-green'; }
+                else if (r.is_guest == 1) { nameClass = 'bg-orange'; }
+                else if (r.is_volunteer == 1) { nameClass = 'bg-blue'; }
+                else { nameClass = ''; }
+
+                const name = `${r.last_name}, ${r.first_name}` + (r.is_volunteer == 1 ? ' (VOL)' : '');
+
+                rowsHtml += `<tr>
+                    <td class="${renewClass}">${renew}</td>
+                    <td class="${nameClass}">${name}</td>
+                    <td></td>
+                    <td>CX/NCNS</td>
+                    <td>${r.bus_rider == 1 ? 'Yes' : ''}</td>
+                    <td></td>
+                </tr>`;
+            });
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`<html><head><title>Day Sheet - ${d.date_label}</title><style>
+                body{font-family:Arial,sans-serif;padding:20px;}
+                h1{text-align:center;border:2px solid #000;padding:10px;margin:0 0 20px;font-size:22px;}
+                table{border-collapse:collapse;}
+                td,th{border:1px solid #000;padding:4px 10px;}
+                .label{font-weight:bold;}
+                .admin-row{display:flex;gap:25px;align-items:flex-start;margin-bottom:15px;}
+                .admin-col table + table{margin-top:10px;}
+                .roster{width:100%;}
+                .roster th{background:#d9d9d9;}
+                .bg-green{background:#c6efce;}
+                .bg-blue{background:#ddebf7;}
+                .bg-orange{background:#fce4d6;}
+                .bg-red{background:#ffc7ce;}
+                .bg-yellow{background:#ffeb9c;}
+                @media print { body{padding:0;} }
+            </style></head><body>
+                <h1>${d.date_label}</h1>
+                <div class="admin-row">
+                    <table>
+                        <tr><td class="label">Reservations:</td><td>${d.reservation_count}</td></tr>
+                        <tr><td class="label">Member:</td><td></td></tr>
+                        <tr><td class="label">Guest:</td><td></td></tr>
+                        <tr><td class="label">CX/NCNS:</td><td></td></tr>
+                        <tr><td class="label">Walk Ins:</td><td></td></tr>
+                        <tr><td class="label">Total:</td><td></td></tr>
+                    </table>
+                    <div class="admin-col">
+                        <table>
+                            <tr><td class="label">Bus Riders:</td><td></td></tr>
+                            <tr><td class="label">x2 Trips:</td><td></td></tr>
+                            <tr><td class="label">x1 Trips:</td><td></td></tr>
+                        </table>
+                        <table>
+                            <tr><td class="label">Volunteers:</td><td></td></tr>
+                            <tr><td class="label">Member Money:</td><td>$</td></tr>
+                            <tr><td class="label">Guest Money:</td><td>$</td></tr>
+                            <tr><td class="label">Total Money:</td><td>$</td></tr>
+                        </table>
+                    </div>
+                    <table>
+                        <tr><td class="label">AIS:</td><td></td></tr>
+                    </table>
+                </div>
+                <table class="roster">
+                    <thead><tr><th>Renew</th><th>Member Name</th><th>Sign</th><th>CX/NCNS</th><th>Bus</th><th>Notes</th></tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </body></html>`);
+            printWindow.document.close();
+            printWindow.onload = function() { printWindow.print(); printWindow.onafterprint = function() { printWindow.close(); }; };
+        }, 'json');
     });
 
     $('#addDateRow').on('click', function() {
