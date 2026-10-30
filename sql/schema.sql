@@ -73,4 +73,18 @@ CREATE TABLE IF NOT EXISTS `lunch_reservations` (
     CONSTRAINT `fk_reservation_member` FOREIGN KEY (`member_id`) REFERENCES `members` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `cancellation_log` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `member_id` INT UNSIGNED NOT NULL,
+    `cancel_date` DATE NOT NULL,
+    `type` ENUM('CX','NCNS') NOT NULL,
+    `notes` TEXT NULL,
+    `excused` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `member_id` (`member_id`),
+    KEY `cancel_date` (`cancel_date`),
+    CONSTRAINT `fk_cancellation_member` FOREIGN KEY (`member_id`) REFERENCES `members` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET FOREIGN_KEY_CHECKS = 1;

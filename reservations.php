@@ -84,6 +84,66 @@ require_once __DIR__ . '/includes/header.php';
     <div id="noResults" style="display:none;">No reservations found.</div>
 </div>
 
+<hr class="section-divider">
+
+<div class="card">
+    <h2>Log a Cancellation / No-Show</h2>
+    <form id="cancellationLogForm">
+        <div class="form-group">
+            <label for="cl_member_id">Select Member:</label>
+            <select name="member_id" id="cl_member_id" required><option value="">Select a member</option></select>
+        </div>
+        <div class="form-group">
+            <label for="cl_date">Date of Cancellation:</label>
+            <input type="date" name="cancel_date" id="cl_date" required>
+        </div>
+        <div class="form-group">
+            <label for="cl_type">CX/NCNS:</label>
+            <select name="type" id="cl_type" required>
+                <option value="CX">CX (Cancel)</option>
+                <option value="NCNS">NCNS (No Call No Show)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="cl_notes">Notes:</label>
+            <textarea name="notes" id="cl_notes" rows="2" style="width:100%;"></textarea>
+        </div>
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="excused" id="cl_excused" value="1"> Excused</label>
+        </div>
+        <div class="button-group">
+            <button type="submit">Log Cancellation</button>
+        </div>
+    </form>
+</div>
+
+<hr class="section-divider">
+
+<div class="card">
+    <h2>Cancellation History</h2>
+    <form id="cancellationSearchForm">
+        <div class="form-group">
+            <label for="ch_member_id">Member:</label>
+            <select name="member_id" id="ch_member_id"><option value="">All</option></select>
+        </div>
+        <div class="form-group">
+            <label for="ch_date">Date:</label>
+            <input type="date" name="cancel_date" id="ch_date">
+        </div>
+        <div class="button-group">
+            <button type="submit">Search</button>
+            <button type="button" id="cancellationResetButton" class="reset-button">Reset</button>
+        </div>
+    </form>
+
+    <div id="cancellationRecordCount"></div>
+    <table id="cancellationResultsTable" style="display:none;">
+        <thead><tr><th>Member Name</th><th>Date</th><th>CX/NCNS</th><th>Notes</th><th>CX Total</th><th>NCNS Total</th><th>Total</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <div id="cancellationNoResults" style="display:none;">No cancellation records found.</div>
+</div>
+
 <script>
 jQuery(document).ready(function($) {
     // Format a plain "YYYY-MM-DD" (or "YYYY-MM-DD HH:MM:SS") date string for
@@ -112,6 +172,8 @@ jQuery(document).ready(function($) {
     }
     loadMembers('#r_member_id');
     loadMembers('#s_member_id');
+    loadMembers('#cl_member_id');
+    loadMembers('#ch_member_id');
 
     // --- Print Day Sheet ---
     $('#daySheetToggle').on('click', function() {
@@ -202,7 +264,17 @@ jQuery(document).ready(function($) {
                 .label{font-weight:bold;}
                 .admin-row{display:flex;gap:25px;align-items:flex-start;margin-bottom:15px;}
                 .admin-col table + table{margin-top:10px;}
-                .roster{width:100%;}
+                /* table-layout:fixed plus explicit widths on the first
+                   two columns (summing to 330px, same as the Walk Ins
+                   table's num+name columns below) makes the right edge
+                   of Member Name line up with the right edge of the
+                   Walk Ins table's Name column. */
+                .roster{width:100%;table-layout:fixed;}
+                .roster th:nth-child(1), .roster td:nth-child(1){width:50px;}
+                .roster th:nth-child(2), .roster td:nth-child(2){width:280px;word-wrap:break-word;}
+                .roster th:nth-child(3), .roster td:nth-child(3){width:60px;}
+                .roster th:nth-child(4), .roster td:nth-child(4){width:90px;}
+                .roster th:nth-child(5), .roster td:nth-child(5){width:50px;}
                 .roster th{background:#d9d9d9;}
                 .walkins{margin-top:20px;}
                 .walkins th{background:#d9d9d9;}
@@ -287,8 +359,25 @@ jQuery(document).ready(function($) {
         });
     }
 
+    // Before letting staff proceed with a member selected for a new
+    // reservation, check whether they're currently serving an
+    // unexcused-cancellation/no-show ban. If so, block it with a dialog
+    // and clear the selection rather than letting a reservation be set.
     $('#r_member_id').on('change', function() {
-        $('.date-entry').each(function() { checkExistingReservation($(this)); });
+        const member_id = $(this).val();
+        if (!member_id) {
+            $('.date-entry').each(function() { checkExistingReservation($(this)); });
+            return;
+        }
+        const memberName = $('#r_member_id option:selected').text();
+        $.getJSON('api/cancellations.php', { action: 'check_ban', member_id: member_id }, function(response) {
+            if (response.success && response.data.banned) {
+                alert(`Reservation can not be made. ${memberName} has ${response.data.count} unexcused cancellation(s) or no-show(s); they will be eligible again on ${formatDateStr(response.data.eligible_date)}.`);
+                $('#r_member_id').val('');
+                return;
+            }
+            $('.date-entry').each(function() { checkExistingReservation($(this)); });
+        });
     });
 
     $(document).on('change', '.res-date', function() {
@@ -450,6 +539,62 @@ jQuery(document).ready(function($) {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    });
+
+    // --- Log a Cancellation / No-Show ---
+    $('#cancellationLogForm').on('submit', function(e) {
+        e.preventDefault();
+        const member_id = $('#cl_member_id').val();
+        const cancel_date = $('#cl_date').val();
+        if (!member_id) { alert('Please select a member'); return; }
+        if (!cancel_date) { alert('Please select a date'); return; }
+
+        $.post('api/cancellations.php', $(this).serialize() + '&action=add', function(response) {
+            if (response.success) {
+                alert('Cancellation logged successfully');
+                $('#cancellationLogForm')[0].reset();
+            } else {
+                alert('Error: ' + response.data.message);
+            }
+        }, 'json').fail(function() { alert('Server error logging cancellation'); });
+    });
+
+    // --- Cancellation History search ---
+    function performCancellationSearch() {
+        $.get('api/cancellations.php', $('#cancellationSearchForm').serialize() + '&action=search', function(response) {
+            if (response.success && response.data.length > 0) displayCancellationResults(response.data);
+            else {
+                $('#cancellationResultsTable').hide(); $('#cancellationNoResults').show();
+                $('#cancellationRecordCount').text('Records found: 0');
+            }
+        }, 'json');
+    }
+
+    function displayCancellationResults(results) {
+        const tbody = $('#cancellationResultsTable tbody');
+        tbody.empty();
+        $('#cancellationRecordCount').text(`Records found: ${results.length}`);
+        results.forEach(row => {
+            tbody.append(`<tr>
+                <td>${row.last_name}, ${row.first_name}</td>
+                <td>${formatDateStr(row.cancel_date)}</td>
+                <td>${row.type === 'CX' ? 'Cancel' : 'NCNS'}</td>
+                <td>${row.notes ? row.notes : ''}</td>
+                <td style="text-align:center">${row.cx_total}</td>
+                <td style="text-align:center">${row.ncns_total}</td>
+                <td style="text-align:center">${row.total}</td>
+            </tr>`);
+        });
+        $('#cancellationResultsTable').show();
+        $('#cancellationNoResults').hide();
+    }
+
+    $('#cancellationSearchForm').on('submit', function(e) { e.preventDefault(); performCancellationSearch(); });
+    $('#cancellationResetButton').on('click', function() {
+        $('#cancellationSearchForm')[0].reset();
+        $('#cancellationResultsTable').hide();
+        $('#cancellationNoResults').hide();
+        $('#cancellationRecordCount').text('');
     });
 });
 </script>
