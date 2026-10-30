@@ -186,6 +186,10 @@ jQuery(document).ready(function($) {
 
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`<html><head><title>Day Sheet - ${d.date_label}</title><style>
+                /* Browsers drop background colors when printing by default
+                   (to save ink) unless told otherwise -- without this, every
+                   color-coding rule below would print as plain white. */
+                * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 body{font-family:Arial,sans-serif;padding:20px;}
                 h1{text-align:center;border:2px solid #000;padding:10px;margin:0 0 20px;font-size:22px;}
                 table{border-collapse:collapse;}
