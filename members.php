@@ -38,6 +38,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="form-group">
             <label for="renewalDate">Renewal Date:</label>
             <input type="date" name="renewalDate" id="renewalDate">
+            <small style="display:block;color:#666;">Pick the date their paperwork was filled out -- this will jump forward to the actual renewal/expiration date (2 years later) automatically.</small>
         </div>
 
         <div class="form-group">
@@ -126,6 +127,27 @@ jQuery(document).ready(function($) {
         $('#printCard').hide();
         updateButtonVisibility();
     }
+
+    // Staff pick the date a member's paperwork was filled out, but what we
+    // actually track (and store as renewal_date) is when it expires -- 2
+    // years later. So the moment a date is picked, jump the field itself
+    // forward 2 years; everything downstream (save, display) just uses
+    // whatever ends up in the field. Pure string/number math on the
+    // "YYYY-MM-DD" parts avoids JS Date's UTC/local timezone pitfalls.
+    $('#renewalDate').on('change', function() {
+        const picked = $(this).val();
+        if (!picked) return;
+        const parts = picked.split('-');
+        if (parts.length !== 3) return;
+        const y = parseInt(parts[0], 10) + 2;
+        const mm = parts[1];
+        let dd = parts[2];
+        if (mm === '02' && dd === '29') {
+            const isLeap = (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0));
+            if (!isLeap) dd = '28';
+        }
+        $(this).val(`${y}-${mm}-${dd}`);
+    });
 
     $('#phoneNumber').on('input', function() {
         const input = $(this);

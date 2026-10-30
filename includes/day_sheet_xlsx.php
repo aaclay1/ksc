@@ -195,7 +195,7 @@ function output_day_sheet_xlsx($date_label, $counts, $rows, $today = null) {
             $renewStyle = 9;
         } else {
             $renewTs = strtotime($renewal_date);
-            $renew = date('n/j', $renewTs);
+            $renew = date('m/y', $renewTs);
             if ($renewTs < $todayTs) {
                 $renewStyle = 9; // expired -> red
             } elseif (($renewTs - $todayTs) <= $thirtyDays) {

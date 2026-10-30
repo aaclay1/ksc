@@ -122,12 +122,13 @@ jQuery(document).ready(function($) {
         }
     });
 
-    // Converts a plain "YYYY-MM-DD" renewal date to "M/D" without going
-    // through the Date/timezone machinery (same reasoning as formatDateStr).
-    function renewMonthDay(dateStr) {
+    // Converts a plain "YYYY-MM-DD" renewal date to "MM/YY" (renewals only
+    // track by month and year) without going through the Date/timezone
+    // machinery (same reasoning as formatDateStr).
+    function renewMonthYear(dateStr) {
         const parts = String(dateStr).split('-');
         if (parts.length !== 3) return dateStr;
-        return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+        return `${parts[1]}/${parts[0].slice(-2)}`;
     }
 
     $('#daySheetGenerate').on('click', function() {
@@ -158,7 +159,7 @@ jQuery(document).ready(function($) {
                 } else if (!r.renewal_date) {
                     renew = ''; renewClass = 'bg-red';
                 } else {
-                    renew = renewMonthDay(r.renewal_date);
+                    renew = renewMonthYear(r.renewal_date);
                     const renewTs = new Date(r.renewal_date + 'T00:00:00').getTime();
                     if (renewTs < todayTs) { renewClass = 'bg-red'; }
                     else if ((renewTs - todayTs) <= THIRTY_DAYS_MS) { renewClass = 'bg-yellow'; }
