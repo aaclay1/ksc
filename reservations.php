@@ -27,7 +27,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="button-group">
             <button type="button" id="addDateRow" class="secondary">+ Add Another Date</button>
             <button type="submit" class="set-button">Set Reservation(s)</button>
-            <button type="button" id="cancelReservations" class="delete-button">Cancel Reservation(s)</button>
+            <button type="button" id="cancelReservations" class="delete-button" style="display:none;">Cancel Reservation(s)</button>
             <button type="button" id="deleteReservations" class="delete-button">Delete Reservation(s)</button>
         </div>
     </form>
