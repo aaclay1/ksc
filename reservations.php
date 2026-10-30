@@ -377,6 +377,13 @@ jQuery(document).ready(function($) {
                 return;
             }
             $('.date-entry').each(function() { checkExistingReservation($(this)); });
+        }, 'json').fail(function() {
+            // Don't fail silently: if the ban check itself couldn't run
+            // (e.g. the cancellation_log table is missing, or a server
+            // error), say so loudly rather than quietly letting the
+            // reservation through unchecked.
+            alert('Could not check cancellation/no-show history for ' + memberName + ' -- the reservation cannot be verified right now. Please try again, or check the Cancellation History section manually before proceeding.');
+            $('#r_member_id').val('');
         });
     });
 
