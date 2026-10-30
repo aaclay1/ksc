@@ -184,6 +184,11 @@ jQuery(document).ready(function($) {
                 </tr>`;
             });
 
+            let walkInsHtml = '';
+            for (let i = 1; i <= 6; i++) {
+                walkInsHtml += `<tr><td class="num">${i}</td><td class="name"></td></tr>`;
+            }
+
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`<html><head><title>Day Sheet - ${d.date_label}</title><style>
                 /* Browsers drop background colors when printing by default
@@ -199,6 +204,10 @@ jQuery(document).ready(function($) {
                 .admin-col table + table{margin-top:10px;}
                 .roster{width:100%;}
                 .roster th{background:#d9d9d9;}
+                .walkins{margin-top:20px;}
+                .walkins th{background:#d9d9d9;}
+                .walkins td.num{text-align:center;width:30px;}
+                .walkins td.name{width:300px;}
                 .bg-green{background:#c6efce;}
                 .bg-blue{background:#ddebf7;}
                 .bg-orange{background:#fce4d6;}
@@ -236,6 +245,10 @@ jQuery(document).ready(function($) {
                 <table class="roster">
                     <thead><tr><th>Renew</th><th>Member Name</th><th>Sign</th><th>CX/NCNS</th><th>Bus</th><th>Notes</th></tr></thead>
                     <tbody>${rowsHtml}</tbody>
+                </table>
+                <table class="walkins">
+                    <thead><tr><th colspan="2">Walk Ins</th></tr></thead>
+                    <tbody>${walkInsHtml}</tbody>
                 </table>
             </body></html>`);
             printWindow.document.close();
