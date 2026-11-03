@@ -264,6 +264,11 @@ jQuery(document).ready(function($) {
                 .label{font-weight:bold;}
                 .admin-row{display:flex;gap:25px;align-items:flex-start;margin-bottom:15px;}
                 .admin-col table + table{margin-top:10px;}
+                /* These value cells are blank on purpose -- staff fill them
+                   in by hand on the printed sheet -- so without an explicit
+                   width they shrink to almost nothing since there's no text
+                   to size against. */
+                .admin-row td:not(.label){min-width:60px;}
                 /* table-layout:fixed plus explicit widths on the first
                    two columns (summing to 330px, same as the Walk Ins
                    table's num+name columns below) makes the right edge
